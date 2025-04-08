@@ -66,9 +66,7 @@ export class GifService {
   };
 
   getHistoryFromLocalStorage() {
-    const history = localStorage.getItem('gifs');
-    if (history) {
-      this.searchHistory.set(JSON.parse(history));
-    }
+    const history = localStorage.getItem('gifs') ?? '{}';
+    this.searchHistory.set(JSON.parse(history));
   }
 }
