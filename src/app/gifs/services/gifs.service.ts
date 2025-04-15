@@ -9,11 +9,20 @@ import { map, Observable, tap } from 'rxjs';
 @Injectable({providedIn: 'root'})
 export class GifService {
   private http = inject(HttpClient);
+  private trendingPage = signal(0);
+
   trendingGifs = signal<Gif[]>([]);
-  trendingGifsLoading = signal<boolean>(true);
+  trendingGifsLoading = signal<boolean>(false);
   searchHistory = signal<Record<string, Gif[]>>({});
   // cuando queremos tener algo calculado usamos propiedades computadas
-  searchHistoryKey = computed(() => Object.keys(this.searchHistory()));
+  searchHistoryKey = computed<string[]>(() => Object.keys(this.searchHistory()));
+  trendingGifGroup = computed<Gif[][]>(() => {
+    const groups = [];
+    for (let i = 0; i < this.trendingGifs().length; i += 3) {
+      groups.push(this.trendingGifs().slice(i, i + 3));
+    }
+    return groups;
+  });
 
   constructor() {
     this.loadTrendingGifs();
@@ -26,14 +35,21 @@ export class GifService {
   });
 
   loadTrendingGifs() {
+
+    if ( this.trendingGifsLoading() ) return;
+
+    this.trendingGifsLoading.set(true);
+
     this.http.get<GiphyResponse>(`${ environment.guphyUrl }/gifs/trending`, {
       params: {
         api_key: environment.giphyApiKey,
         limit: 20,
+        offset: this.trendingPage() * 20,
       }
     }).subscribe( (resp) => {
       const gifs = GifMapper.mapGiphyItemsToGifArray(resp.data);
-      this.trendingGifs.set(gifs);
+      this.trendingGifs.update( (prev) => [...prev, ...gifs] );
+      this.trendingPage.update( (prev) => prev + 1 );
       this.trendingGifsLoading.set(false);
     });
   }
